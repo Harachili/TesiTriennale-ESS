@@ -13,9 +13,9 @@ import ast
 # Se prendessimo un PRIME troppo grande, tutto il testo cifrato sarebbe troppo grande.
 # Se lo prendessimo troppo piccolo, invece, la sicurezza sarebbe compromessa)
 
-PRIME = 2**127 - 1 # 12-esimo PRIME di Marsenne
+PRIME = 2**521 - 1 # 13-esimo PRIME di Marsenne
 
-# Il 13-esimo PRIME di Mersenne è 2**521 - 1
+# Il 12-esimo PRIME di Mersenne è 2**127 - 1
 
 interorandom = functools.partial(random.SystemRandom().randint, 0)
 prod = lambda x, y: x * y
@@ -33,24 +33,11 @@ def eval_at(poly, x, prime):
 		accum %= prime
 	return accum
 
-"""
-def make_random_shares(minimum, shares, prime=PRIME):
-	'''
-	Genera dei punti dal segreto tali che ne bastino "minimum" su "shares"
-	per ricreare effettivamente il segreto
-	'''
-	if minimum > shares:
-		raise ValueError("pool secret would be irrecoverable")
-	poly = [interorandom(prime) for i in range(minimum)]
-	points = [(i, eval_at(poly, i, prime))
-			  for i in range(1, shares + 1)]
-	# print(poly[0], points)
-	return poly[0], points
-"""
 
 def create_poly(secret, minimum):
 	print(secret)
 	return [secret] + [interorandom(PRIME) for i in range(minimum-1)]
+
 
 def create_shares_from_secret(poly, nShares, prime=PRIME):
 	'''
@@ -67,13 +54,15 @@ def create_shares_from_secret(poly, nShares, prime=PRIME):
 	# print(poly[0], points)
 	return points
 
-# divisione di interi modulo p, significa trovare l'inverso del denominatore
-# modulo p e poi moltiplicare il numeratore per il suo inverso
-# ad esempio: l'inverso di A è quel B tale che A*B % p == 1
-# Per calcolarlo utilizzo l'algoritmo esteso di Euclide
-# http://en.wikipedia.org/wiki/Modular_multiplicative_inverse#Computation
-# Per l'implementazione mi sono ispirato a https://github.com/lapets/egcd/blob/main/egcd/egcd.py
+
 def extended_gcd(a, b):
+	'''
+	divisione di interi modulo p, significa trovare l'inverso del denominatore
+	modulo p e poi moltiplicare il numeratore per il suo inverso
+	ad esempio: l'inverso di A è quel B tale che A*B % p == 1
+	Per calcolarlo utilizzo l'algoritmo esteso di Euclide
+	http://en.wikipedia.org/wiki/Modular_multiplicative_inverse#Computation
+	'''
 	x = 0
 	last_x = 1
 	y = 1
@@ -127,20 +116,7 @@ def recover_secret(shares, prime=PRIME):
 	x_s, y_s = zip(*shares);
 	return lagrange_interpolation(0, x_s, y_s, prime);
 
-"""
-def test():
-	'Esegue l'operazione di codifica + decodifica più volte e ritorna il tempo in microsecondi'
-	for i in range(2, 20):
-		for j in range(i, i * 2):
-			secret, shares = make_random_shares(i, j)
-			print("secret: ", secret,"\nshares: ", shares)
-			assert recover_secret(random.sample(shares, i)) == secret # Prendi tra tutti gli shares, 'i' valori differenti; se la funzione recover_secret ritorna il segreto tutto ok
-			assert recover_secret(shares) == secret
-	return timeit.timeit(
-		lambda: recover_secret(make_random_shares(4, 8)[1]),
-		number=1000) * 1000
-# print(test())
-"""
+
 def main():
 	totTime = 0;
 	d = dict();
@@ -180,52 +156,10 @@ def main():
 		except UnicodeDecodeError:
 			print("Non hai inserito abbastanza shares per ricostruire il segreto!")
 
-
-	"""
-	b = input("Cosa vuoi fare? [E]ncrypt, [D]ecrypt:\n")
-	if b.lower() == "e":
-		secretString  = input("Inserire il segreto: ");
-		secret = bytes_to_long(secretString.encode());
-		nShares = int(input("Inserire il numero di shares che si vogliono: "));
-		minimum = int(input("Inserire il numero minimo di shares per recuperare il segreto (almeno 2): "));
-		shares  = create_shares_from_secret(secret, minimum, nShares);
-		print(shares);
-		# print(recover_secret(random.sample(shares, minimum)));
-		assert recover_secret(random.sample(shares, minimum)) == secret, "No";
-		assert recover_secret(shares) == secret, "Nope";
-	elif b.lower() == "d":
-		inpShares = input("Inserire una lista di almeno 'minimum' shares da decrittare:\n");
-		shares = ast.literal_eval(inpShares);
-		print("Se ciò che hai inserito è corretto, il plaintext è: ");
-		try:
-			print(long_to_bytes(recover_secret(shares)).decode());
-		except:
-			print("Servono più shares per ricostruire il segreto!");
-	"""
-
 if __name__== "__main__":
 	main()
 
-"""
-Esempio di uso: avvio lo script:
 
-Cosa vuoi fare? [E]ncrypt, [D]ecrypt:
-E
-Inserire il segreto: ciao
-Inserire il numero di shares che si vogliono: 7
-Inserire il numero minimo di shares per recuperare il segreto (almeno 2): 4
-Ricevo in output la lista di shares: [(1, 152103668536034648881366113803600739839), (2, 91024655550788392089932687891074079599), (3, 137398032630907248642491165984660720142), (4, 101435320981629542360771080657281194542), (5, 133630408729132060529876571913624247327), (6, 44194817078653126971537172326610411571), (7, 153763617616838760702544325616812537529)]
-
-Basta ora avviare il programma inserendo:
-
-Cosa vuoi fare? [E]ncrypt, [D]ecrypt:
-D
-Inserire una lista di almeno 'minimum' shares da decrittare: 
-[(1, 152103668536034648881366113803600739839), (5, 133630408729132060529876571913624247327), (4, 101435320981629542360771080657281194542), (6, 44194817078653126971537172326610411571), (7, 153763617616838760702544325616812537529)]
-
-Essendo questa una lista di almeno 4 shares (5 per l'esattezza), il programma ritorna il segreto iniziale:
-ciao
-"""
 
 
 
